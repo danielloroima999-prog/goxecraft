@@ -3,133 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Goxecraft - Minecraft Clone</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            overflow: hidden;
             font-family: 'Arial', sans-serif;
+            overflow: hidden;
             background: #000;
-            touch-action: none;
         }
 
-        #gameCanvas {
-            display: block;
+        #canvas-container {
             width: 100vw;
             height: 100vh;
+            position: relative;
         }
 
         /* HUD */
         #hud {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
             z-index: 100;
+            pointer-events: none;
         }
 
+        #hud div {
+            margin: 5px 0;
+        }
+
+        /* Crosshair */
         #crosshair {
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             width: 20px;
             height: 20px;
             pointer-events: none;
+            z-index: 100;
         }
 
         #crosshair::before,
         #crosshair::after {
             content: '';
             position: absolute;
-            background: rgba(255, 255, 255, 0.8);
+            background: white;
         }
 
         #crosshair::before {
             width: 2px;
             height: 20px;
             left: 9px;
+            top: 0;
         }
 
         #crosshair::after {
             width: 20px;
             height: 2px;
+            left: 0;
             top: 9px;
         }
 
-        /* Inventario */
-        #inventory {
-            position: absolute;
+        /* Hotbar */
+        #hotbar {
+            position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
             gap: 5px;
-            pointer-events: all;
+            z-index: 100;
         }
 
-        .inventory-slot {
+        .hotbar-slot {
             width: 50px;
             height: 50px;
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid #555;
+            background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
             color: white;
-            cursor: pointer;
-            transition: all 0.2s;
+            font-size: 12px;
+            position: relative;
         }
 
-        .inventory-slot.active {
-            border-color: #fff;
+        .hotbar-slot.active {
+            border-color: white;
             background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.1);
         }
 
-        .inventory-slot:hover {
-            background: rgba(255, 255, 255, 0.15);
+        .hotbar-slot .block-preview {
+            width: 30px;
+            height: 30px;
+            border-radius: 3px;
         }
 
-        /* Controles móviles */
-        #mobileControls {
+        .hotbar-slot .slot-number {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 10px;
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            display: none;
             position: fixed;
             bottom: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            right: 0;
+            height: 200px;
+            z-index: 99;
             pointer-events: none;
-            display: none;
         }
 
-        #mobileControls.active {
+        #mobile-controls.active {
             display: block;
         }
 
-        .joystick {
+        #joystick {
             position: absolute;
-            bottom: 100px;
-            left: 30px;
+            bottom: 20px;
+            left: 20px;
             width: 120px;
             height: 120px;
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            pointer-events: all;
+            pointer-events: auto;
         }
 
-        .joystick-knob {
+        #joystick-knob {
             position: absolute;
             width: 50px;
             height: 50px;
@@ -138,20 +151,11 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            transition: all 0.1s;
+            pointer-events: none;
         }
 
-        .action-buttons {
+        .mobile-button {
             position: absolute;
-            bottom: 100px;
-            right: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: all;
-        }
-
-        .action-btn {
             width: 60px;
             height: 60px;
             background: rgba(255, 255, 255, 0.2);
@@ -161,34 +165,27 @@
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
+            font-size: 12px;
+            pointer-events: auto;
             user-select: none;
         }
 
-        .action-btn:active {
-            background: rgba(255, 255, 255, 0.4);
-            transform: scale(0.95);
+        #jump-btn {
+            bottom: 80px;
+            right: 20px;
         }
 
-        .action-row {
-            display: flex;
-            gap: 10px;
+        #fly-btn {
+            bottom: 20px;
+            right: 90px;
         }
 
-        /* Stats */
-        #stats {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-size: 14px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-            pointer-events: none;
+        #sprint-btn {
+            bottom: 20px;
+            right: 160px;
         }
 
-        /* Loading */
+        /* Loading Screen */
         #loading {
             position: fixed;
             top: 0;
@@ -204,86 +201,132 @@
             z-index: 1000;
         }
 
-        #loading.hidden {
-            display: none;
-        }
-
-        .loading-text {
-            font-size: 24px;
+        #loading h1 {
+            font-size: 48px;
             margin-bottom: 20px;
         }
 
-        .loading-bar {
-            width: 300px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid white;
-            overflow: hidden;
+        #loading p {
+            font-size: 18px;
         }
 
-        .loading-progress {
-            height: 100%;
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Instructions */
+        #instructions {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 10px;
+            color: white;
+            max-width: 500px;
+            z-index: 200;
+            display: none;
+        }
+
+        #instructions.show {
+            display: block;
+        }
+
+        #instructions h2 {
+            margin-bottom: 20px;
+        }
+
+        #instructions ul {
+            list-style: none;
+            margin: 10px 0;
+        }
+
+        #instructions li {
+            margin: 8px 0;
+        }
+
+        #instructions button {
+            margin-top: 20px;
+            padding: 10px 20px;
             background: #4CAF50;
-            width: 0%;
-            transition: width 0.3s;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #instructions button:hover {
+            background: #45a049;
         }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
     <div id="loading">
-        <div class="loading-text">Cargando Goxecraft...</div>
-        <div class="loading-bar">
-            <div class="loading-progress" id="loadingProgress"></div>
-        </div>
+        <h1>🎮 Goxecraft</h1>
+        <div class="spinner"></div>
+        <p>Cargando mundo...</p>
     </div>
 
-    <!-- Game Canvas -->
-    <canvas id="gameCanvas"></canvas>
+    <div id="instructions" class="show">
+        <h2>🎮 Controles</h2>
+        <h3>PC:</h3>
+        <ul>
+            <li>🖱️ <strong>Mouse</strong> - Mirar alrededor</li>
+            <li>⌨️ <strong>WASD / Flechas</strong> - Moverse</li>
+            <li>🖱️ <strong>Click Izquierdo</strong> - Romper bloque</li>
+            <li>🖱️ <strong>Click Derecho</strong> - Colocar bloque</li>
+            <li>🖱️ <strong>Rueda</strong> - Cambiar bloque</li>
+            <li>⌨️ <strong>1-6</strong> - Seleccionar bloque</li>
+            <li>⌨️ <strong>Espacio</strong> - Saltar</li>
+            <li>⌨️ <strong>Shift</strong> - Correr</li>
+            <li>⌨️ <strong>F</strong> - Volar</li>
+        </ul>
+        <h3>Móvil:</h3>
+        <ul>
+            <li>🕹️ <strong>Joystick</strong> - Moverse</li>
+            <li>👆 <strong>Deslizar pantalla</strong> - Mirar</li>
+            <li>👆 <strong>Tap</strong> - Romper/Colocar bloque</li>
+            <li>🔘 <strong>Botones</strong> - Saltar, Volar, Correr</li>
+        </ul>
+        <button onclick="startGame()">¡Jugar!</button>
+    </div>
 
-    <!-- HUD -->
+    <div id="canvas-container"></div>
+
+    <div id="crosshair"></div>
+
     <div id="hud">
-        <div id="crosshair"></div>
-        
-        <div id="stats">
-            <div>FPS: <span id="fps">60</span></div>
-            <div>Posición: <span id="position">0, 0, 0</span></div>
-            <div>Bloques: <span id="blockCount">0</span></div>
-        </div>
-
-        <div id="inventory">
-            <div class="inventory-slot active" data-block="grass">🟩 Pasto</div>
-            <div class="inventory-slot" data-block="dirt">🟫 Tierra</div>
-            <div class="inventory-slot" data-block="stone">⬜ Piedra</div>
-            <div class="inventory-slot" data-block="wood">🟧 Madera</div>
-            <div class="inventory-slot" data-block="sand">🟨 Arena</div>
-            <div class="inventory-slot" data-block="water">🟦 Agua</div>
-        </div>
+        <div id="fps">FPS: 60</div>
+        <div id="position">Posición: (0, 0, 0)</div>
+        <div id="selected-block">Bloque: Pasto</div>
+        <div id="mode">Modo: Normal</div>
     </div>
 
-    <!-- Mobile Controls -->
-    <div id="mobileControls">
-        <div class="joystick" id="joystick">
-            <div class="joystick-knob" id="joystickKnob"></div>
+    <div id="hotbar"></div>
+
+    <div id="mobile-controls">
+        <div id="joystick">
+            <div id="joystick-knob"></div>
         </div>
-        
-        <div class="action-buttons">
-            <div class="action-row">
-                <div class="action-btn" id="flyBtn">✈️</div>
-                <div class="action-btn" id="jumpBtn">⬆️</div>
-            </div>
-            <div class="action-row">
-                <div class="action-btn" id="placeBtn">➕</div>
-                <div class="action-btn" id="breakBtn">⛏️</div>
-            </div>
-            <div class="action-row">
-                <div class="action-btn" id="sprintBtn">🏃</div>
-            </div>
-        </div>
+        <div class="mobile-button" id="jump-btn">SALTAR</div>
+        <div class="mobile-button" id="fly-btn">VOLAR</div>
+        <div class="mobile-button" id="sprint-btn">CORRER</div>
     </div>
 
-    <!-- Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Three.js r140 - Versión estable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r140/three.min.js"></script>
     
     <!-- Game Scripts -->
     <script src="js/config.js"></script>
@@ -292,5 +335,89 @@
     <script src="js/player.js"></script>
     <script src="js/controls.js"></script>
     <script src="js/game.js"></script>
+
+    <script>
+        let game;
+
+        function startGame() {
+            document.getElementById('instructions').classList.remove('show');
+            
+            // Detectar si es móvil
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                document.getElementById('mobile-controls').classList.add('active');
+            }
+
+            // Inicializar juego
+            setTimeout(() => {
+                try {
+                    game = new Game();
+                    game.init();
+                    document.getElementById('loading').style.display = 'none';
+                } catch (error) {
+                    console.error('Error al iniciar el juego:', error);
+                    document.getElementById('loading').innerHTML = `
+                        <h1>❌ Error</h1>
+                        <p>No se pudo iniciar el juego</p>
+                        <p style="font-size: 14px; margin-top: 20px;">${error.message}</p>
+                        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">Reintentar</button>
+                    `;
+                }
+            }, 500);
+        }
+
+        // Crear hotbar
+        function createHotbar() {
+            const hotbar = document.getElementById('hotbar');
+            BLOCK_TYPES.forEach((block, index) => {
+                const slot = document.createElement('div');
+                slot.className = 'hotbar-slot';
+                if (index === 0) slot.classList.add('active');
+                
+                const preview = document.createElement('div');
+                preview.className = 'block-preview';
+                preview.style.backgroundColor = block.color;
+                
+                const number = document.createElement('div');
+                number.className = 'slot-number';
+                number.textContent = index + 1;
+                
+                slot.appendChild(number);
+                slot.appendChild(preview);
+                hotbar.appendChild(slot);
+            });
+        }
+
+        createHotbar();
+
+        // Actualizar HUD
+        function updateHUD(data) {
+            if (data.fps !== undefined) {
+                document.getElementById('fps').textContent = `FPS: ${data.fps}`;
+            }
+            if (data.position) {
+                const pos = data.position;
+                document.getElementById('position').textContent = 
+                    `Posición: (${Math.floor(pos.x)}, ${Math.floor(pos.y)}, ${Math.floor(pos.z)})`;
+            }
+            if (data.selectedBlock !== undefined) {
+                document.getElementById('selected-block').textContent = 
+                    `Bloque: ${BLOCK_TYPES[data.selectedBlock].name}`;
+                
+                // Actualizar hotbar
+                document.querySelectorAll('.hotbar-slot').forEach((slot, index) => {
+                    slot.classList.toggle('active', index === data.selectedBlock);
+                });
+            }
+            if (data.flying !== undefined) {
+                document.getElementById('mode').textContent = 
+                    data.flying ? 'Modo: Vuelo' : 'Modo: Normal';
+            }
+        }
+
+        // Exponer función globalmente
+        window.updateHUD = updateHUD;
+    </script>
 </body>
 </html>
