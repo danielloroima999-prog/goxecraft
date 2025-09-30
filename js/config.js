@@ -1,93 +1,101 @@
-/**
- * Goxecraft - Configuración del juego
- * Todas las constantes y configuraciones centralizadas
- */
+// ============================================
+// CONFIGURACIÓN GLOBAL DEL JUEGO
+// ============================================
 
-const CONFIG = {
-    // Configuración del mundo
-    WORLD: {
-        CHUNK_SIZE: 16,          // Tamaño de cada chunk
-        RENDER_DISTANCE: 4,      // Distancia de renderizado en chunks
-        WORLD_HEIGHT: 64,        // Altura máxima del mundo
-        SEA_LEVEL: 32,           // Nivel del mar
-        BLOCK_SIZE: 1,           // Tamaño de cada bloque
+// Tipos de bloques disponibles
+const BLOCK_TYPES = [
+    {
+        id: 0,
+        name: 'Pasto',
+        color: '#7CFC00',
+        transparent: false,
+        solid: true
     },
-
-    // Configuración del jugador
-    PLAYER: {
-        HEIGHT: 1.8,             // Altura del jugador
-        SPEED: 5,                // Velocidad de movimiento
-        SPRINT_MULTIPLIER: 1.5,  // Multiplicador de velocidad al correr
-        FLY_SPEED: 10,           // Velocidad de vuelo
-        JUMP_FORCE: 8,           // Fuerza de salto
-        GRAVITY: 20,             // Gravedad
-        REACH: 5,                // Alcance para colocar/romper bloques
-        MOUSE_SENSITIVITY: 0.002, // Sensibilidad del mouse
+    {
+        id: 1,
+        name: 'Tierra',
+        color: '#8B4513',
+        transparent: false,
+        solid: true
     },
-
-    // Configuración de generación de terreno
-    TERRAIN: {
-        SEED: Math.random() * 10000,
-        SCALE: 0.05,             // Escala del ruido Perlin
-        OCTAVES: 4,              // Número de octavas para el ruido
-        PERSISTENCE: 0.5,        // Persistencia del ruido
-        LACUNARITY: 2.0,         // Lacunaridad del ruido
-        HEIGHT_MULTIPLIER: 20,   // Multiplicador de altura
-        TREE_CHANCE: 0.02,       // Probabilidad de generar un árbol
+    {
+        id: 2,
+        name: 'Piedra',
+        color: '#808080',
+        transparent: false,
+        solid: true
     },
-
-    // Configuración de rendimiento
-    PERFORMANCE: {
-        MAX_BLOCKS_PER_FRAME: 100,  // Máximo de bloques a generar por frame
-        FRUSTUM_CULLING: true,       // Activar frustum culling
-        FACE_CULLING: true,          // Activar face culling (no renderizar caras ocultas)
-        USE_INSTANCING: true,        // Usar instancing para bloques similares
-        SHADOW_QUALITY: 'medium',    // Calidad de sombras: 'low', 'medium', 'high'
+    {
+        id: 3,
+        name: 'Madera',
+        color: '#DEB887',
+        transparent: false,
+        solid: true
     },
-
-    // Configuración de controles
-    CONTROLS: {
-        MOBILE_THRESHOLD: 768,   // Ancho de pantalla para activar controles móviles
-        JOYSTICK_DEADZONE: 0.1,  // Zona muerta del joystick
-        TOUCH_SENSITIVITY: 0.003, // Sensibilidad táctil
+    {
+        id: 4,
+        name: 'Arena',
+        color: '#F4A460',
+        transparent: false,
+        solid: true
     },
-
-    // Configuración visual
-    GRAPHICS: {
-        FOV: 75,                 // Campo de visión
-        NEAR: 0.1,               // Plano cercano
-        FAR: 1000,               // Plano lejano
-        FOG_ENABLED: true,       // Activar niebla
-        FOG_COLOR: 0x87CEEB,     // Color de la niebla (azul cielo)
-        FOG_NEAR: 50,            // Inicio de la niebla
-        FOG_FAR: 150,            // Fin de la niebla
-        AMBIENT_LIGHT: 0.6,      // Intensidad de luz ambiental
-        DIRECTIONAL_LIGHT: 0.8,  // Intensidad de luz direccional
-    },
-
-    // Teclas de control
-    KEYS: {
-        FORWARD: ['KeyW', 'ArrowUp'],
-        BACKWARD: ['KeyS', 'ArrowDown'],
-        LEFT: ['KeyA', 'ArrowLeft'],
-        RIGHT: ['KeyD', 'ArrowRight'],
-        JUMP: ['Space'],
-        SPRINT: ['ShiftLeft', 'ShiftRight'],
-        FLY: ['KeyF'],
-        INVENTORY_1: ['Digit1'],
-        INVENTORY_2: ['Digit2'],
-        INVENTORY_3: ['Digit3'],
-        INVENTORY_4: ['Digit4'],
-        INVENTORY_5: ['Digit5'],
-        INVENTORY_6: ['Digit6'],
+    {
+        id: 5,
+        name: 'Agua',
+        color: '#1E90FF',
+        transparent: true,
+        solid: false
     }
+];
+
+// Configuración del mundo
+const WORLD_CONFIG = {
+    CHUNK_SIZE: 16,
+    CHUNK_HEIGHT: 64,
+    RENDER_DISTANCE: 4,
+    BLOCK_SIZE: 1,
+    SEA_LEVEL: 32,
+    TREE_PROBABILITY: 0.02
 };
 
-// Detectar si es dispositivo móvil
-CONFIG.IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-    || window.innerWidth <= CONFIG.CONTROLS.MOBILE_THRESHOLD;
+// Configuración del jugador
+const PLAYER_CONFIG = {
+    HEIGHT: 1.8,
+    WIDTH: 0.6,
+    SPEED: 5,
+    SPRINT_MULTIPLIER: 1.5,
+    JUMP_FORCE: 8,
+    GRAVITY: 20,
+    REACH_DISTANCE: 5,
+    FLY_SPEED: 10
+};
 
-// Exportar configuración
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = CONFIG;
-}
+// Configuración de controles
+const CONTROLS_CONFIG = {
+    MOUSE_SENSITIVITY: 0.002,
+    TOUCH_SENSITIVITY: 0.003,
+    JOYSTICK_DEADZONE: 0.1
+};
+
+// Configuración de renderizado
+const RENDER_CONFIG = {
+    FOV: 75,
+    NEAR: 0.1,
+    FAR: 1000,
+    FOG_NEAR: 50,
+    FOG_FAR: 200,
+    FOG_COLOR: 0x87CEEB,
+    AMBIENT_LIGHT: 0x404040,
+    DIRECTIONAL_LIGHT: 0xffffff,
+    SHADOW_MAP_SIZE: 2048
+};
+
+// Configuración móvil
+const MOBILE_CONFIG = {
+    JOYSTICK_SIZE: 120,
+    BUTTON_SIZE: 60,
+    REDUCED_RENDER_DISTANCE: 3,
+    REDUCED_SHADOW_MAP: 1024
+};
+
+console.log('✅ Config.js cargado correctamente');
