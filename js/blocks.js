@@ -1,285 +1,227 @@
-/**
- * Goxecraft - Sistema de Bloques
- * Define todos los tipos de bloques y sus propiedades
- */
+// ============================================
+// SISTEMA DE BLOQUES Y GEOMETRÍA
+// ============================================
 
-class BlockType {
-    constructor(name, color, transparent = false, solid = true) {
-        this.name = name;
-        this.color = color;
-        this.transparent = transparent;
-        this.solid = solid;
-    }
-}
-
-// Definición de tipos de bloques
-const BLOCK_TYPES = {
-    AIR: new BlockType('air', 0x000000, true, false),
-    GRASS: new BlockType('grass', 0x7CFC00, false, true),
-    DIRT: new BlockType('dirt', 0x8B4513, false, true),
-    STONE: new BlockType('stone', 0x808080, false, true),
-    WOOD: new BlockType('wood', 0xA0522D, false, true),
-    SAND: new BlockType('sand', 0xF4A460, false, true),
-    WATER: new BlockType('water', 0x1E90FF, true, false),
-    LEAVES: new BlockType('leaves', 0x228B22, true, true),
-    COBBLESTONE: new BlockType('cobblestone', 0x696969, false, true),
-};
-
-// Mapeo de nombres a IDs
-const BLOCK_IDS = {
-    'air': 0,
-    'grass': 1,
-    'dirt': 2,
-    'stone': 3,
-    'wood': 4,
-    'sand': 5,
-    'water': 6,
-    'leaves': 7,
-    'cobblestone': 8,
-};
-
-// Mapeo inverso
-const ID_TO_BLOCK = Object.keys(BLOCK_IDS).reduce((acc, key) => {
-    acc[BLOCK_IDS[key]] = key;
-    return acc;
-}, {});
-
-/**
- * Clase para gestionar bloques individuales
- */
-class Block {
-    constructor(type, x, y, z) {
-        this.type = type;
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.mesh = null;
+// BlockManager - Gestiona la creación y renderizado de bloques
+class BlockManager {
+    constructor() {
+        this.materials = this.createMaterials();
     }
 
-    getBlockType() {
-        return BLOCK_TYPES[this.type.toUpperCase()];
-    }
-
-    isTransparent() {
-        return this.getBlockType().transparent;
-    }
-
-    isSolid() {
-        return this.getBlockType().solid;
-    }
-
-    /**
-     * Crea la geometría del bloque con face culling optimizado
-     */
-    createMesh(neighbors = {}) {
-        const blockType = this.getBlockType();
-        const size = CONFIG.WORLD.BLOCK_SIZE;
+    // Crear materiales para cada tipo de bloque
+    createMaterials() {
+        const materials = {};
         
-        // Si el bloque está completamente rodeado de bloques sólidos, no renderizar
-        if (this.isCompletelyHidden(neighbors)) {
-            return null;
-        }
-
-        // Crear geometría solo para las caras visibles
-        const geometry = this.createOptimizedGeometry(neighbors, size);
-        
-        const material = new THREE.MeshLambertMaterial({
-            color: blockType.color,
-            transparent: blockType.transparent,
-            opacity: blockType.transparent ? 0.7 : 1.0,
-            side: THREE.FrontSide,
+        BLOCK_TYPES.forEach(blockType => {
+            materials[blockType.id] = new THREE.MeshLambertMaterial({
+                color: blockType.color,
+                transparent: blockType.transparent,
+                opacity: blockType.transparent ? 0.7 : 1.0,
+                side: THREE.DoubleSide
+            });
         });
-
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.set(this.x, this.y, this.z);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
         
-        // Guardar referencia al bloque
-        this.mesh.userData.block = this;
-        
-        return this.mesh;
+        return materials;
     }
 
-    /**
-     * Verifica si el bloque está completamente oculto
-     */
-    isCompletelyHidden(neighbors) {
-        if (!CONFIG.PERFORMANCE.FACE_CULLING) return false;
-        
-        const directions = ['top', 'bottom', 'front', 'back', 'left', 'right'];
-        return directions.every(dir => {
-            const neighbor = neighbors[dir];
-            return neighbor && !neighbor.isTransparent() && neighbor.isSolid();
-        });
+    // Obtener material por ID de bloque
+    getMaterial(blockId) {
+        return this.materials[blockId];
     }
 
-    /**
-     * Crea geometría optimizada solo con caras visibles
-     */
-    createOptimizedGeometry(neighbors, size) {
+    // Crear geometría de un bloque individual
+    createBlockGeometry(x, y, z, blockId, neighbors) {
+        const geometry = new THREE.BufferGeometry();
         const vertices = [];
-        const indices = [];
         const normals = [];
         const uvs = [];
+        const indices = [];
         
-        let vertexIndex = 0;
+        const size = WORLD_CONFIG.BLOCK_SIZE;
+        const halfSize = size / 2;
+        
+        // Definir las 6 caras del cubo
+        const faces = [
+            // Cara superior (Y+)
+            {
+                check: !neighbors.top,
+                vertices: [
+                    [x - halfSize, y + halfSize, z - halfSize],
+                    [x + halfSize, y + halfSize, z - halfSize],
+                    [x + halfSize, y + halfSize, z + halfSize],
+                    [x - halfSize, y + halfSize, z + halfSize]
+                ],
+                normal: [0, 1, 0]
+            },
+            // Cara inferior (Y-)
+            {
+                check: !neighbors.bottom,
+                vertices: [
+                    [x - halfSize, y - halfSize, z - halfSize],
+                    [x - halfSize, y - halfSize, z + halfSize],
+                    [x + halfSize, y - halfSize, z + halfSize],
+                    [x + halfSize, y - halfSize, z - halfSize]
+                ],
+                normal: [0, -1, 0]
+            },
+            // Cara frontal (Z+)
+            {
+                check: !neighbors.front,
+                vertices: [
+                    [x - halfSize, y - halfSize, z + halfSize],
+                    [x - halfSize, y + halfSize, z + halfSize],
+                    [x + halfSize, y + halfSize, z + halfSize],
+                    [x + halfSize, y - halfSize, z + halfSize]
+                ],
+                normal: [0, 0, 1]
+            },
+            // Cara trasera (Z-)
+            {
+                check: !neighbors.back,
+                vertices: [
+                    [x + halfSize, y - halfSize, z - halfSize],
+                    [x + halfSize, y + halfSize, z - halfSize],
+                    [x - halfSize, y + halfSize, z - halfSize],
+                    [x - halfSize, y - halfSize, z - halfSize]
+                ],
+                normal: [0, 0, -1]
+            },
+            // Cara derecha (X+)
+            {
+                check: !neighbors.right,
+                vertices: [
+                    [x + halfSize, y - halfSize, z - halfSize],
+                    [x + halfSize, y - halfSize, z + halfSize],
+                    [x + halfSize, y + halfSize, z + halfSize],
+                    [x + halfSize, y + halfSize, z - halfSize]
+                ],
+                normal: [1, 0, 0]
+            },
+            // Cara izquierda (X-)
+            {
+                check: !neighbors.left,
+                vertices: [
+                    [x - halfSize, y - halfSize, z - halfSize],
+                    [x - halfSize, y + halfSize, z - halfSize],
+                    [x - halfSize, y + halfSize, z + halfSize],
+                    [x - halfSize, y - halfSize, z + halfSize]
+                ],
+                normal: [-1, 0, 0]
+            }
+        ];
 
-        // Función auxiliar para agregar una cara
-        const addFace = (positions, normal, uvCoords) => {
-            const startIndex = vertexIndex;
-            
-            // Agregar vértices
-            positions.forEach(pos => {
-                vertices.push(...pos);
-                normals.push(...normal);
-            });
-            
-            // Agregar UVs
-            uvCoords.forEach(uv => uvs.push(...uv));
-            
-            // Agregar índices (dos triángulos por cara)
-            indices.push(
-                startIndex, startIndex + 1, startIndex + 2,
-                startIndex, startIndex + 2, startIndex + 3
-            );
-            
-            vertexIndex += 4;
-        };
+        let vertexOffset = 0;
 
-        const s = size / 2;
+        // Agregar solo las caras visibles
+        faces.forEach(face => {
+            if (face.check) {
+                // Agregar vértices
+                face.vertices.forEach(vertex => {
+                    vertices.push(...vertex);
+                    normals.push(...face.normal);
+                });
 
-        // Top face
-        if (!neighbors.top || neighbors.top.isTransparent()) {
-            addFace(
-                [[-s, s, -s], [s, s, -s], [s, s, s], [-s, s, s]],
-                [0, 1, 0],
-                [[0, 0], [1, 0], [1, 1], [0, 1]]
-            );
-        }
+                // Agregar UVs
+                uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
 
-        // Bottom face
-        if (!neighbors.bottom || neighbors.bottom.isTransparent()) {
-            addFace(
-                [[-s, -s, -s], [-s, -s, s], [s, -s, s], [s, -s, -s]],
-                [0, -1, 0],
-                [[0, 0], [0, 1], [1, 1], [1, 0]]
-            );
-        }
+                // Agregar índices para dos triángulos
+                indices.push(
+                    vertexOffset, vertexOffset + 1, vertexOffset + 2,
+                    vertexOffset, vertexOffset + 2, vertexOffset + 3
+                );
 
-        // Front face
-        if (!neighbors.front || neighbors.front.isTransparent()) {
-            addFace(
-                [[-s, -s, s], [s, -s, s], [s, s, s], [-s, s, s]],
-                [0, 0, 1],
-                [[0, 0], [1, 0], [1, 1], [0, 1]]
-            );
-        }
+                vertexOffset += 4;
+            }
+        });
 
-        // Back face
-        if (!neighbors.back || neighbors.back.isTransparent()) {
-            addFace(
-                [[s, -s, -s], [-s, -s, -s], [-s, s, -s], [s, s, -s]],
-                [0, 0, -1],
-                [[0, 0], [1, 0], [1, 1], [0, 1]]
-            );
-        }
-
-        // Right face
-        if (!neighbors.right || neighbors.right.isTransparent()) {
-            addFace(
-                [[s, -s, s], [s, -s, -s], [s, s, -s], [s, s, s]],
-                [1, 0, 0],
-                [[0, 0], [1, 0], [1, 1], [0, 1]]
-            );
-        }
-
-        // Left face
-        if (!neighbors.left || neighbors.left.isTransparent()) {
-            addFace(
-                [[-s, -s, -s], [-s, -s, s], [-s, s, s], [-s, s, -s]],
-                [-1, 0, 0],
-                [[0, 0], [1, 0], [1, 1], [0, 1]]
-            );
-        }
-
-        // Crear geometría
-        const geometry = new THREE.BufferGeometry();
+        // Configurar geometría
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
         geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
         geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
         geometry.setIndex(indices);
-        
+
         return geometry;
     }
 
-    /**
-     * Destruye el mesh del bloque
-     */
-    destroy() {
-        if (this.mesh) {
-            if (this.mesh.geometry) this.mesh.geometry.dispose();
-            if (this.mesh.material) this.mesh.material.dispose();
-            this.mesh = null;
-        }
-    }
-}
-
-/**
- * Gestor de bloques para el inventario
- */
-class BlockInventory {
-    constructor() {
-        this.selectedBlock = 'grass';
-        this.blocks = ['grass', 'dirt', 'stone', 'wood', 'sand', 'water'];
-        this.selectedIndex = 0;
+    // Crear mesh de un bloque
+    createBlockMesh(x, y, z, blockId, neighbors) {
+        const geometry = this.createBlockGeometry(x, y, z, blockId, neighbors);
+        const material = this.getMaterial(blockId);
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        
+        return mesh;
     }
 
-    selectBlock(blockName) {
-        if (this.blocks.includes(blockName)) {
-            this.selectedBlock = blockName;
-            this.selectedIndex = this.blocks.indexOf(blockName);
-            this.updateUI();
-        }
-    }
+    // Combinar múltiples geometrías en una sola (optimización)
+    mergeGeometries(geometries) {
+        if (geometries.length === 0) return null;
+        
+        const mergedGeometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const normals = [];
+        const uvs = [];
+        const indices = [];
+        let vertexOffset = 0;
 
-    selectByIndex(index) {
-        if (index >= 0 && index < this.blocks.length) {
-            this.selectedIndex = index;
-            this.selectedBlock = this.blocks[index];
-            this.updateUI();
-        }
-    }
+        geometries.forEach(geometry => {
+            const positionAttr = geometry.getAttribute('position');
+            const normalAttr = geometry.getAttribute('normal');
+            const uvAttr = geometry.getAttribute('uv');
+            const indexAttr = geometry.getIndex();
 
-    nextBlock() {
-        this.selectedIndex = (this.selectedIndex + 1) % this.blocks.length;
-        this.selectedBlock = this.blocks[this.selectedIndex];
-        this.updateUI();
-    }
-
-    previousBlock() {
-        this.selectedIndex = (this.selectedIndex - 1 + this.blocks.length) % this.blocks.length;
-        this.selectedBlock = this.blocks[this.selectedIndex];
-        this.updateUI();
-    }
-
-    getSelectedBlock() {
-        return this.selectedBlock;
-    }
-
-    updateUI() {
-        const slots = document.querySelectorAll('.inventory-slot');
-        slots.forEach((slot, index) => {
-            if (index === this.selectedIndex) {
-                slot.classList.add('active');
-            } else {
-                slot.classList.remove('active');
+            // Agregar vértices
+            for (let i = 0; i < positionAttr.count; i++) {
+                vertices.push(
+                    positionAttr.getX(i),
+                    positionAttr.getY(i),
+                    positionAttr.getZ(i)
+                );
+                normals.push(
+                    normalAttr.getX(i),
+                    normalAttr.getY(i),
+                    normalAttr.getZ(i)
+                );
+                uvs.push(
+                    uvAttr.getX(i),
+                    uvAttr.getY(i)
+                );
             }
+
+            // Agregar índices con offset
+            for (let i = 0; i < indexAttr.count; i++) {
+                indices.push(indexAttr.getX(i) + vertexOffset);
+            }
+
+            vertexOffset += positionAttr.count;
         });
+
+        mergedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        mergedGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        mergedGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        mergedGeometry.setIndex(indices);
+
+        return mergedGeometry;
+    }
+
+    // Obtener información de un tipo de bloque
+    getBlockType(blockId) {
+        return BLOCK_TYPES.find(type => type.id === blockId);
+    }
+
+    // Verificar si un bloque es sólido
+    isBlockSolid(blockId) {
+        const blockType = this.getBlockType(blockId);
+        return blockType ? blockType.solid : false;
+    }
+
+    // Verificar si un bloque es transparente
+    isBlockTransparent(blockId) {
+        const blockType = this.getBlockType(blockId);
+        return blockType ? blockType.transparent : false;
     }
 }
 
-// Exportar para uso global
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Block, BlockType, BLOCK_TYPES, BLOCK_IDS, ID_TO_BLOCK, BlockInventory };
-}
+console.log('✅ Blocks.js cargado correctamente');
