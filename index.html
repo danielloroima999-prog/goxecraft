@@ -325,34 +325,53 @@
         <div class="mobile-button" id="sprint-btn">CORRER</div>
     </div>
 
-    <!-- Three.js r140 - Versión estable -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r140/three.min.js"></script>
-    
     <script>
-        // Esperar a que Three.js se cargue
-        function waitForThree() {
+        // Cargar Three.js con múltiples CDN fallbacks
+        function loadThreeJS() {
             return new Promise((resolve, reject) => {
-                if (typeof THREE !== 'undefined') {
-                    console.log('✅ Three.js cargado correctamente');
-                    resolve();
-                } else {
-                    let attempts = 0;
-                    const interval = setInterval(() => {
-                        attempts++;
+                const cdns = [
+                    'https://cdn.jsdelivr.net/npm/three@0.140.0/build/three.min.js',
+                    'https://unpkg.com/three@0.140.0/build/three.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r140/three.min.js'
+                ];
+                
+                let currentCDN = 0;
+                
+                function tryLoadCDN() {
+                    if (currentCDN >= cdns.length) {
+                        reject(new Error('No se pudo cargar Three.js desde ningún CDN'));
+                        return;
+                    }
+                    
+                    const script = document.createElement('script');
+                    script.src = cdns[currentCDN];
+                    
+                    script.onload = () => {
+                        // Verificar que THREE esté disponible
                         if (typeof THREE !== 'undefined') {
-                            console.log('✅ Three.js cargado correctamente');
-                            clearInterval(interval);
+                            console.log(`✅ Three.js cargado desde: ${cdns[currentCDN]}`);
                             resolve();
-                        } else if (attempts > 50) {
-                            clearInterval(interval);
-                            reject(new Error('No se pudo cargar Three.js'));
+                        } else {
+                            console.warn(`⚠️ Script cargado pero THREE no está disponible: ${cdns[currentCDN]}`);
+                            currentCDN++;
+                            tryLoadCDN();
                         }
-                    }, 100);
+                    };
+                    
+                    script.onerror = () => {
+                        console.warn(`⚠️ Error cargando desde: ${cdns[currentCDN]}`);
+                        currentCDN++;
+                        tryLoadCDN();
+                    };
+                    
+                    document.head.appendChild(script);
                 }
+                
+                tryLoadCDN();
             });
         }
 
-        // Cargar scripts en orden
+        // Cargar script individual
         function loadScript(src) {
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
@@ -361,15 +380,26 @@
                     console.log(`✅ ${src} cargado`);
                     resolve();
                 };
-                script.onerror = () => reject(new Error(`Error cargando ${src}`));
+                script.onerror = () => {
+                    console.error(`❌ Error cargando ${src}`);
+                    reject(new Error(`Error cargando ${src}`));
+                };
                 document.body.appendChild(script);
             });
         }
 
+        // Cargar todos los scripts del juego
         async function loadGameScripts() {
             try {
                 document.getElementById('loading-text').textContent = 'Cargando Three.js...';
-                await waitForThree();
+                await loadThreeJS();
+                
+                // Pequeña pausa para asegurar que THREE esté disponible
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (typeof THREE === 'undefined') {
+                    throw new Error('THREE no está disponible después de cargar el script');
+                }
                 
                 document.getElementById('loading-text').textContent = 'Cargando configuración...';
                 await loadScript('js/config.js');
@@ -390,6 +420,10 @@
                 await loadScript('js/game.js');
                 
                 console.log('✅ Todos los scripts cargados correctamente');
+                
+                // Crear hotbar después de cargar config
+                createHotbar();
+                
                 document.getElementById('loading').style.display = 'none';
                 
             } catch (error) {
@@ -397,7 +431,8 @@
                 document.getElementById('loading').innerHTML = `
                     <h1>❌ Error</h1>
                     <p>No se pudieron cargar los recursos del juego</p>
-                    <p style="font-size: 14px; margin-top: 20px;">${error.message}</p>
+                    <p style="font-size: 14px; margin-top: 20px; max-width: 400px;">${error.message}</p>
+                    <p style="font-size: 12px; margin-top: 10px; color: #888;">Verifica tu conexión a internet</p>
                     <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">Reintentar</button>
                 `;
             }
@@ -448,6 +483,8 @@
             }
             
             const hotbar = document.getElementById('hotbar');
+            hotbar.innerHTML = ''; // Limpiar hotbar existente
+            
             BLOCK_TYPES.forEach((block, index) => {
                 const slot = document.createElement('div');
                 slot.className = 'hotbar-slot';
@@ -465,6 +502,8 @@
                 slot.appendChild(preview);
                 hotbar.appendChild(slot);
             });
+            
+            console.log('✅ Hotbar creado correctamente');
         }
 
         // Actualizar HUD
@@ -495,17 +534,8 @@
         // Exponer función globalmente
         window.updateHUD = updateHUD;
 
-        // Cargar scripts cuando el DOM esté listo
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadGameScripts);
-        } else {
-            loadGameScripts();
-        }
-
-        // Crear hotbar después de cargar config
-        window.addEventListener('load', () => {
-            setTimeout(createHotbar, 100);
-        });
+        // Iniciar carga de scripts
+        loadGameScripts();
     </script>
 </body>
 </html>
